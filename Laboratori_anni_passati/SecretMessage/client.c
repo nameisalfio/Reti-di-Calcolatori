@@ -22,9 +22,8 @@ int main(int argc, char* argv[])
     socklen_t len = sizeof(struct sockaddr_in);
     char sendline[BUFFER_SIZE];
     char recvline[BUFFER_SIZE];
-    char msg[MSG_LEN] = "Secret message";
-    char usr[5];
-    
+    char msg[MSG_LEN] = "SECRET_MESSAGE1";
+
     if(argc != 4)   //  IP Port USR
         handle_error("Error argc\n");
 
@@ -43,32 +42,36 @@ int main(int argc, char* argv[])
         handle_error("Error connect\n");
     printf("[+]Connection established\n");
 
-    //  C1 MSG : 192.168.1.9-C1, .... , 192.168.56.104-C2
+    //  C1 MSG 192.168.1.9-C1  .... 192.168.56.104-C2
 
-    sprintf(sendline, "%s %s : 192.168.1.9-C1, 192.168.56.104-C2", argv[3], msg);
+    sprintf(sendline, "%s %s 192.168.1.9-C1 193.67.9.3-C4 192.168.56.104-C2", argv[3], msg);
     if((send(sockfd, sendline, BUFFER_SIZE, 0)) < 0)
         handle_error("Error send\n");
     printf("Secret message sent\n");
-
-    if((n = recv(sockfd, recvline, BUFFER_SIZE, 0)) < 0)
-        handle_error("Error recv\n");
-    recvline[n] = 0;
-    printf("Reply: %s, IP:%s, Port:%d\n", recvline, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
     
     //  C1 GET_SECRET C4
 
-    printf("\nWhose message do you want to know? (Enter ID) :\n");
-    scanf("%s", usr);
-    sprintf(sendline, "%s GET_SECRET %s", argv[3], usr);
+    for(;;)
+    {
+        // AUTH C1
+        // GET C3
+        printf("\nEnter a request:\n");
+        fgets(sendline, BUFFER_SIZE, stdin);
+        sendline[strcspn(sendline, "\n")] = 0;
 
-    if((send(sockfd, sendline, BUFFER_SIZE, 0)) < 0)
-        handle_error("Error send\n");
+        if(strcmp(sendline, "STOP") == 0)break;
 
-    if((n = recv(sockfd, recvline, BUFFER_SIZE, 0)) < 0)
-        handle_error("Error recv\n");
-    recvline[n] = 0;
-    printf("Reply: %s, IP:%s, Port:%d\n", recvline, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+        if((send(sockfd, sendline, BUFFER_SIZE, 0)) < 0)
+            handle_error("Error send\n");
 
+        if((n = recv(sockfd, recvline, BUFFER_SIZE, 0)) < 0)
+            handle_error("Error recv\n");
+        recvline[n] = 0;
+        printf("Reply: %s, IP:%s, Port:%d\n", recvline, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+    }
+
+    printf("\nTransmission completed...\n");
     close(sockfd);
+
     return 0;
 }
