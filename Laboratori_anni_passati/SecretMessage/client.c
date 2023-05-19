@@ -51,8 +51,8 @@ int main(int argc, char* argv[])
     
     for(;;)
     {
-        //GET C1 C3
-        //CHANGE C1 C3
+        // GET C1 C3 
+        // CHANGE C1 NEW_MSG 192.168.1.9-C1  .... 192.168.56.104-C2
         printf("\nEnter a request:\n");
         fgets(sendline, BUFFER_SIZE, stdin);
         sendline[strcspn(sendline, "\n")] = 0;

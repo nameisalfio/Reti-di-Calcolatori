@@ -22,8 +22,7 @@ void PUT_MSG(char* recvline)
     if((fp = fopen("secret.txt", "w")) < 0)
         handle_error("Error fopen\n");
 
-    fprintf(fp, "%s\n", recvline); //  C1 MSG 192.168.1.9-C1  .... 192.168.56.104-C2
-
+    fprintf(fp, "%s\n", recvline);
     fclose(fp);
 }
 
@@ -32,8 +31,6 @@ char* GET(char* recvline, char* ip_sender)
     FILE* fp;
     if((fp = fopen("secret.txt", "r")) < 0)
         handle_error("Error fopen\n");
-
-    // GET C1 C3
 
     char* dup = strdup(recvline);
     char* usr_sender = strtok(dup, " ");
@@ -47,8 +44,6 @@ char* GET(char* recvline, char* ip_sender)
         char* str = strtok(dup, " ");
         if(strcmp(id, str) == 0)
         {        
-            //C1 SECRET_MESSAGE1 192.168.1.9-C1 193.67.9.3-C4 192.168.56.104-C2
-
             char* msg = strtok(line, " ");
             msg = strtok(NULL, " ");
             char* ip_client = strtok(NULL, "-");
@@ -74,10 +69,41 @@ char* CHANGE(char *recvline, char * ip_sender)
     if(!(fp = fopen("secret.txt", "r"))) 
         handle_error("Error fopen\n");
 
-    // GET C1
+    FILE* fp_tmp;
+    if(!(fp = fopen("secret_tmp.txt", "w"))) 
+        handle_error("Error fopen\n");
 
+    // CHANGE C1 NEW_MSG 192.168.1.9-C1  .... 192.168.56.104-C2
+
+    char* new_line = strdup(recvline);
+    char* dup = strdup(recvline);
+    char* id = strtok(dup, " ");
+    id = strtok(NULL, " ");
+
+    char line[BUFFER_SIZE];
+    char* line_copy;
+    while(fgets(line, BUFFER_SIZE, fp))
+    {
+        line_copy = strdup(line);
+        dup = strdup(line);
+        char* str = strtok(dup, " ");
+
+        if(strcmp(id, str) == 0)
+            fputs(new_line, fp_tmp);
+    
+        else
+            fputs(line_copy, fp_tmp);
+    }
     fclose(fp);
-    return " ";
+    fclose(fp_tmp);
+
+    if (remove("secret.txt")) 
+        handle_error("Error remove file\n");
+    
+    if (rename("secret_tmp.txt", "secret.txt")) 
+        handle_error("Error rename file\n");
+    
+    return "SUCCESSFUL_CHANGE";
 }
 
 int main(int argc, char* argv[])
@@ -130,7 +156,7 @@ int main(int argc, char* argv[])
             PUT_MSG(recvline);
             for(;;)
             { 
-                if((n = recv(new_sock, recvline, BUFFER_SIZE, 0)) < 0)
+                if((n = recv(new_sock, recvline, BUFFER_SIZE, 0)) < 0)  
                     handle_error("Error recv\n");
                 else if(n == 0)
                 {
@@ -142,10 +168,10 @@ int main(int argc, char* argv[])
 
                 sprintf(ip_sender, "%s", inet_ntoa(client_addr.sin_addr));
 
-                if(strncmp(recvline, "GET", strlen("GET")) == 0)    // GET C1 C3
+                if(strncmp(recvline, "GET", strlen("GET")) == 0)    // GET C1 C3 --> C1 wants C3's message
                     strcpy(sendline, GET(recvline, ip_sender));
 
-                else if(strncmp(recvline, "CHANGE", strlen("CHANGE")) == 0)
+                else if(strncmp(recvline, "CHANGE", strlen("CHANGE")) == 0)  // CHANGE C1 NEW_MSG 192.168.1.9-C1  .... 192.168.56.104-C2
                     strcpy(sendline, CHANGE(recvline, ip_sender));
 
                 else    
