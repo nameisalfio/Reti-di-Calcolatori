@@ -27,47 +27,57 @@ void PUT_MSG(char* recvline)
     fclose(fp);
 }
 
-char* AUTH(char* recvline, char* ip_sender)
+char* GET(char* recvline, char* ip_sender)
 {
     FILE* fp;
     if((fp = fopen("secret.txt", "r")) < 0)
         handle_error("Error fopen\n");
 
-    // AUTH C1
-    // -->  C1 MSG 192.168.1.9-C1  .... 192.168.56.104-C2
+    // GET C1 C3
 
     char* dup = strdup(recvline);
     char* usr_sender = strtok(dup, " ");
     usr_sender = strtok(NULL, " ");
+    char* id = strtok(NULL, "\n");
 
     char line[BUFFER_SIZE];
     while (fgets(line, BUFFER_SIZE, fp))
     {
-        char* ip_client = strtok(line, " ");
-        ip_client = strtok(NULL, " ");
-        ip_client = strtok(NULL, "-");
-        char* usr_client = strtok(NULL, " ");
-        while(ip_client && usr_client)
-        {
-            if(strncmp(ip_client, ip_sender, strlen(ip_sender)) == 0 && strncmp(usr_client, usr_sender, strlen(usr_sender)) == 0)
+        dup = strdup(line);
+        char* str = strtok(dup, " ");
+        if(strcmp(id, str) == 0)
+        {        
+            //C1 SECRET_MESSAGE1 192.168.1.9-C1 193.67.9.3-C4 192.168.56.104-C2
+
+            char* msg = strtok(line, " ");
+            msg = strtok(NULL, " ");
+            char* ip_client = strtok(NULL, "-");
+            char* usr_client = strtok(NULL, " ");
+            while(ip_client && usr_client)
             {
-                fclose(fp);
-                return "OK";
+                if(strncmp(ip_client, ip_sender, strlen(ip_sender)) == 0 && strncmp(usr_client, usr_sender, strlen(usr_sender)) == 0)
+                {
+                    fclose(fp);
+                    return msg;
+                }
+                ip_client = strtok(NULL, "-");
+                usr_client = strtok(NULL, " ");
             }
-            ip_client = strtok(NULL, "-");
-            usr_client = strtok(NULL, " ");
         }
     }
-    return "INVALID_AUTHENTICATION";
+    return "ERROR_AUTHENTICATION";
 }
 
-char* GET(char* recvline, char* ip_sender)
+char* CHANGE(char *recvline, char * ip_sender)
 {
     FILE* fp;
     if(!(fp = fopen("secret.txt", "r"))) 
         handle_error("Error fopen\n");
+
+    // GET C1
+
     fclose(fp);
-    return "MIAO";
+    return " ";
 }
 
 int main(int argc, char* argv[])
@@ -115,6 +125,8 @@ int main(int argc, char* argv[])
                 break;
             }
             recvline[n] = 0;
+            printf("\nMessaggio: %s | IP: %s, Port: %d\n", recvline, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
             PUT_MSG(recvline);
             for(;;)
             { 
@@ -126,26 +138,16 @@ int main(int argc, char* argv[])
                     break;
                 }
                 recvline[n] = 0;
-                sprintf(ip_sender, "%s", inet_ntoa(client_addr.sin_addr));  
+                printf("\nMessaggio: %s | IP: %s, Port: %d\n", recvline, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-                if(strncmp(recvline, "AUTH", strlen("AUTH")) == 0)
-                {
-                    if(strcmp(AUTH(recvline, ip_sender), "OK") == 0)
-                    {
-                        if((send(new_sock, "Authentication succesful", BUFFER_SIZE, 0)) < 0)   
-                            handle_error("Error send\n");
-                        if((n = recv(new_sock, recvline, BUFFER_SIZE, 0)) < 0)
-                            handle_error("Error recv\n");
-                        else if(n == 0)
-                        {
-                            printf("\n[-]Client disconnected IP: %s, Port: %d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-                            break;
-                        }
-                        recvline[n] = 0;
-                        if(strncmp(recvline, "GET", strlen("GET")) == 0)
-                            strcpy(sendline, GET(recvline, ip_sender));
-                    }
-                }
+                sprintf(ip_sender, "%s", inet_ntoa(client_addr.sin_addr));
+
+                if(strncmp(recvline, "GET", strlen("GET")) == 0)    // GET C1 C3
+                    strcpy(sendline, GET(recvline, ip_sender));
+
+                else if(strncmp(recvline, "CHANGE", strlen("CHANGE")) == 0)
+                    strcpy(sendline, CHANGE(recvline, ip_sender));
+
                 else    
                     strcpy(sendline, "Invalid request. Enter an authentication request...");
 
@@ -160,6 +162,3 @@ int main(int argc, char* argv[])
     close(sockfd);
     return 0;
 }
-
-//printf("\nMessaggio: %s | IP: %s, Port: %d\n", recvline, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-//printf("IP: |%s=%s|\tUsr: |%s=%s|\n", ip_sender, ip_client, usr_sender, usr_client);

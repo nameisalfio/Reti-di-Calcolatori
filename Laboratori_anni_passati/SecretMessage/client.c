@@ -49,12 +49,10 @@ int main(int argc, char* argv[])
         handle_error("Error send\n");
     printf("Secret message sent\n");
     
-    //  C1 GET_SECRET C4
-
     for(;;)
     {
-        // AUTH C1
-        // GET C3
+        //GET C1 C3
+        //CHANGE C1 C3
         printf("\nEnter a request:\n");
         fgets(sendline, BUFFER_SIZE, stdin);
         sendline[strcspn(sendline, "\n")] = 0;
