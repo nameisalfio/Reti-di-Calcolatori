@@ -70,12 +70,15 @@ char* CHANGE(char *recvline, char * ip_sender)
         handle_error("Error fopen\n");
 
     FILE* fp_tmp;
-    if(!(fp = fopen("secret_tmp.txt", "w"))) 
+    if(!(fp_tmp = fopen("secret_tmp.txt", "w"))) 
         handle_error("Error fopen\n");
 
     // CHANGE C1 NEW_MSG 192.168.1.9-C1  .... 192.168.56.104-C2
 
     char* new_line = strdup(recvline);
+    int offset = strlen("CHANGE ");
+    memmove(new_line, new_line+offset, offset);
+
     char* dup = strdup(recvline);
     char* id = strtok(dup, " ");
     id = strtok(NULL, " ");
