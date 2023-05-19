@@ -7,7 +7,6 @@
 
 #define BUFFER_SIZE 1024
 #define MSG_LEN 50
-#define MAX_HOST 5
 
 void handle_error(char* msg)
 {

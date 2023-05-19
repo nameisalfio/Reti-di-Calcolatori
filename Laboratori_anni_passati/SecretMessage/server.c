@@ -8,7 +8,6 @@
 
 #define BUFFER_SIZE 1024
 #define MSG_LEN 50
-#define MAX_CLIENT 5
 
 void handle_error(char* msg)
 {
@@ -19,7 +18,7 @@ void handle_error(char* msg)
 void PUT_MSG(char* recvline)
 {
     FILE* fp;
-    if((fp = fopen("secret.txt", "w")) < 0)
+    if((fp = fopen("secret.txt", "a+")) < 0)
         handle_error("Error fopen\n");
 
     fprintf(fp, "%s\n", recvline);
@@ -182,6 +181,7 @@ int main(int argc, char* argv[])
 
                 if((send(new_sock, sendline, BUFFER_SIZE, 0)) < 0)   
                     handle_error("Error send\n");
+                printf("\nMessaggio inviato : %s\n", sendline);
             }   
             close(new_sock);     
         }
