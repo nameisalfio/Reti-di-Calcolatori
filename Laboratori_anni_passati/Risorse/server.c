@@ -38,24 +38,25 @@ void printRequest(Request* request)
 
 char* operation1(Request* request)
 {
-    // RAM:3:4:2
+    //  1)Chiedere l’elenco delle risorse disponibili (quindi con quantità > 0)
+
     FILE* fp;
-    if(!(fp = fopen("Database.txt", "r+")))
+    if(!(fp = fopen("Database.txt", "r")))
         handle_error("Error fopen\n");
 
     Resource resource;
     char* buffer = malloc(BUFFER_SIZE);
     char line[BUFFER_SIZE];
 
-    //  1)Chiedere l’elenco delle risorse disponibili (quindi con quantità >0)
     while(fgets(line, BUFFER_SIZE, fp) )
     {
         strcpy(resource.name, strtok(line, ":"));
         resource.amount = atoi(strtok(NULL, ":"));
         if(resource.amount > 0)
         {
-            strcat(buffer, resource.name);
-            strcat(buffer, " ");
+            char str[BUFFER_SIZE];
+            sprintf(str, "%s(%d) ", resource.name, resource.amount);
+            strcat(buffer, str);
         }
     }
     fclose(fp);
@@ -64,40 +65,19 @@ char* operation1(Request* request)
 
 char* operation2(Request* request)
 {
-    // RAM:3:4:2
-    FILE* fp;
-    if(!(fp = fopen("Database.txt", "r+")))
-        handle_error("Error fopen\n");
-
-    Resource resource;
-    char* buffer = malloc(BUFFER_SIZE);
-    char line[BUFFER_SIZE];
-
     //  2)Chiedere di prenotare una data risorsa (il server verifica se è ancora disponibile);
-    while(fgets(line, BUFFER_SIZE, fp))
-    {
-        strcpy(resource.name, strtok(line, ":"));
-        resource.amount = atoi(strtok(NULL, ":"));
-        if(strcmp(request->resource, resource.name) == 0 && resource.amount > 0)
-        {
-        }
-        strcpy(buffer, "Resource booked");
-    }
-    fclose(fp);
-    return buffer;
-}
-
-char* operation3(Request* request)
-{
-    // RAM:3:4:2
     /*
-    CONTENUTO DEL FILE DI TESTO --> <nome>:<quantità_residua>:<client_1>:...:<client_n>
+    Implementa la parte di codice richiesta sapendo il formato del file : 
 
-        RAM:5
-        CPU:4:3
-        HARD-DISK:1
-        GPU:0
-        DRAM:2
+    RAM:5
+    CPU:4:3
+    HARD-DISK:1
+    GPU:0:2:3:4
+    DRAM:2:3
+
+    ovvero <nome_risorsa>:<quantità_residua>:<client1>:...:<client2>, dove risorsa rappresenta la 
+    quantità ancora disponibile e i client dono degli ID univoci che rappresentano i client che hanno effettivamente bloccato la risorsa
+
     */
     FILE* fp;
     if(!(fp = fopen("Database.txt", "r+")))
@@ -107,7 +87,60 @@ char* operation3(Request* request)
     char* buffer = malloc(BUFFER_SIZE);
     char line[BUFFER_SIZE];
 
+    while(fgets(line, BUFFER_SIZE, fp))
+    {
+        strcpy(resource.name, strtok(line, ":"));
+        resource.amount = atoi(strtok(NULL, ":"));
+        if(strcmp(request->resource, resource.name) == 0)
+        {
+            if(resource.amount == 0)
+            {
+                strcpy(buffer, "Resource not avaible");
+                break;
+            }
+            // Diminuisci la quantità residua e aggiungi request->ID alla fine della lista
+            resource.amount--;
+            char* new_line = malloc(BUFFER_SIZE);
+            sprintf(new_line, "%s:%d", resource.name, resource.amount);
+
+            // Aggiungi gli ID dei client esistenti
+            char* client_id;
+            while((client_id = strtok(NULL, ":")))
+            {
+                strcat(new_line, ":");
+                strcat(new_line, client_id);
+            }
+
+            // Aggiungi l'ID del nuovo client
+            char new_client_id[BUFFER_SIZE];
+            sprintf(new_client_id, ":%d", request->ID);
+            strcat(new_line, new_client_id);
+
+            // Sostituisci la riga nel file con la riga aggiornata
+            fseek(fp, -strlen(line), SEEK_CUR);
+            fputs(new_line, fp);
+
+            strcpy(buffer, "Resource booked");
+            break;
+        }
+    }
+
+    fclose(fp);
+    return buffer;
+}
+
+char* operation3(Request* request)
+{
     //  3)Chiedere l’elenco delle risorse già prenotate;
+
+    FILE* fp;
+    if(!(fp = fopen("Database.txt", "r")))
+        handle_error("Error fopen\n");
+
+    Resource resource;
+    char* buffer = malloc(BUFFER_SIZE);
+    strcpy(buffer, "Elenco: ");
+    char line[BUFFER_SIZE];
 
     while(fgets(line, BUFFER_SIZE, fp))
     {
@@ -126,53 +159,13 @@ char* operation3(Request* request)
             if(resource.ID_list[i] == request->ID)
             {
                 strcat(buffer, resource.name);
-                strcat(buffer, " ");
+                strcat(buffer, ", ");
             }
         }
     }
     fclose(fp);
     return buffer;
 }
-
-/*
-char* operation3(Request* request)
-{
-    FILE* fp;
-    if(!(fp = fopen("Database.txt", "r+")))
-        handle_error("Error fopen\n");
-
-    Resource resource;
-    char* buffer = malloc(BUFFER_SIZE);
-    char line[BUFFER_SIZE];
-
-    //  3)Chiedere l’elenco delle risorse già prenotate;
-
-    while(fgets(line, BUFFER_SIZE, fp))
-    {
-
-        strcpy(resource.name, strtok(line, ":"));
-        resource.amount = atoi(strtok(NULL, ":"));
-        resource.ID_list = malloc(sizeof(int)*resource.amount);
-        for(int i=0; i<resource.amount-1; i++){
-            char str[BUFFER_SIZE];
-            sprintf(str, "%s ", strtok(NULL, ":"));
-            strcat(buffer, str);
-            //resource.ID_list[i] = atoi(strtok(NULL, ":"));  //SEGMENTATION FAULT
-        }
-        return buffer;
-        for(int i=0; i<resource.amount; i++)
-        {
-            if(resource.ID_list[i] == request->ID)
-            {
-                strcat(buffer, resource.name);
-                strcat(buffer, " ");
-            }
-        }
-    }
-    fclose(fp);
-    return buffer;
-}
-*/
 
 char* operation4(Request* request)
 {
@@ -239,8 +232,7 @@ int main(int argc, char* argv[])
         if((n = recvfrom(sockfd, &request, sizeof(Request), 0, (struct sockaddr*) &client_addr, &len)) < 0)
             handle_error("Errore recvfrom\n"); 
 
-        // Elaborazione della richiesta
-        strcpy(buffer, handle_operation(&request));
+        strcpy(buffer, handle_operation(&request)); //Elaborazione
         printf("Outcome: %s\n", buffer);
 
         if((sendto(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &client_addr, len)) < 0)
