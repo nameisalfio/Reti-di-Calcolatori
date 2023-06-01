@@ -184,6 +184,10 @@ char* operation4(Request* request)
     if(!(fp = fopen("Database.txt", "r+")))
         handle_error("Error fopen\n");
 
+    FILE* fp_tmp;
+    if(!(fp_tmp = fopen("Database_tmp.txt", "a+")))
+        handle_error("Error fopen\n");
+
     Resource resource;
     char* buffer = malloc(BUFFER_SIZE);
     char line[BUFFER_SIZE];
@@ -192,9 +196,52 @@ char* operation4(Request* request)
 
     while(fgets(line, BUFFER_SIZE, fp))
     {
+        char* old_line = strdup(line);
+        strcpy(resource.name, strtok(line, ":"));
+        resource.amount = atoi(strtok(NULL, ":"));
+        resource.ID_list = malloc(sizeof(int)*resource.amount);
+        
+        int n=0;
+        char* str;
+        while((str = strtok(NULL, ":")))    //numero non noto a priori di client
+            resource.ID_list[n++] = atoi(str);  
 
+        if(strcmp(request->resource, resource.name) == 0)
+        {
+            bool match = false;
+            for(int i=0; i<n; i++)
+            {
+                if(resource.ID_list[i] == request->ID)  //scorro la lista dei client che detengono la risorsa
+                {
+                    match = true;
+                    char new_line[BUFFER_SIZE];
+                    char str[BUFFER_SIZE];
+                    resource.amount++;
+                    sprintf(new_line, "%s:%d", resource.name, resource.amount);
+                    for(int i=0; i<n; i++)
+                    {
+                        if(resource.ID_list[i] != request->ID)
+                        {
+                            sprintf(str, ":%d", resource.ID_list[i]);
+                            strcat(new_line, str);
+                        }
+                    }
+                    fprintf(fp_tmp, "%s\n", new_line); 
+                    strcpy(buffer, "Realese successful"); 
+                }
+            }
+            if(!match)
+                sprintf(buffer, "Client %d doesn't hold %s\n", request->ID, request->resource);
+        }
+        else
+            fprintf(fp_tmp, "%s", old_line);
     }
     fclose(fp);
+    fclose(fp_tmp);
+
+    remove("Database.txt");
+    rename("Database_tmp.txt", "Database.txt");
+
     return buffer;
 }
 
