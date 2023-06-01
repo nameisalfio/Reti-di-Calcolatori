@@ -63,69 +63,79 @@ char* operation1(Request* request)
     return buffer;
 }
 
+/*
+Implementa la parte di codice richiesta sapendo il formato del file : 
+
+RAM:5
+CPU:4:3
+HARD-DISK:1
+GPU:0:2:3:4
+DRAM:2:3
+
+ovvero <nome_risorsa>:<quantità_residua>:<client1>:...:<client2>, dove risorsa rappresenta la 
+quantità ancora disponibile e i client dono degli ID univoci che rappresentano i client che hanno effettivamente bloccato la risorsa
+
+*/
 char* operation2(Request* request)
 {
-    //  2)Chiedere di prenotare una data risorsa (il server verifica se è ancora disponibile);
-    /*
-    Implementa la parte di codice richiesta sapendo il formato del file : 
+    // 2)Chiedere di prenotare una data risorsa (il server verifica se è ancora disponibile);
 
-    RAM:5
-    CPU:4:3
-    HARD-DISK:1
-    GPU:0:2:3:4
-    DRAM:2:3
-
-    ovvero <nome_risorsa>:<quantità_residua>:<client1>:...:<client2>, dove risorsa rappresenta la 
-    quantità ancora disponibile e i client dono degli ID univoci che rappresentano i client che hanno effettivamente bloccato la risorsa
-
-    */
     FILE* fp;
     if(!(fp = fopen("Database.txt", "r+")))
+        handle_error("Error fopen\n");
+    
+    FILE* fp_tmp;
+    if(!(fp_tmp = fopen("Database_tmp.txt", "a+")))
         handle_error("Error fopen\n");
 
     Resource resource;
     char* buffer = malloc(BUFFER_SIZE);
     char line[BUFFER_SIZE];
-
+    long line_start;
     while(fgets(line, BUFFER_SIZE, fp))
     {
+        char* old_line = strdup(line);
         strcpy(resource.name, strtok(line, ":"));
         resource.amount = atoi(strtok(NULL, ":"));
+        resource.ID_list = malloc(sizeof(int)*resource.amount);
+        
+        int n=0;
+        char* str;
+        while((str = strtok(NULL, ":")))    //numero non noto a priori di client
+            resource.ID_list[n++] = atoi(str);  
+
         if(strcmp(request->resource, resource.name) == 0)
         {
             if(resource.amount == 0)
             {
-                strcpy(buffer, "Resource not avaible");
+                strcpy(buffer, "Resource not available");
                 break;
             }
-            // Diminuisci la quantità residua e aggiungi request->ID alla fine della lista
+
+            char new_line[BUFFER_SIZE];
+            char str[BUFFER_SIZE];
             resource.amount--;
-            char* new_line = malloc(BUFFER_SIZE);
             sprintf(new_line, "%s:%d", resource.name, resource.amount);
-
-            // Aggiungi gli ID dei client esistenti
-            char* client_id;
-            while((client_id = strtok(NULL, ":")))
+            for(int i=0; i<n; i++)
             {
-                strcat(new_line, ":");
-                strcat(new_line, client_id);
+                sprintf(str, ":%d", resource.ID_list[i]);
+                strcat(new_line, str);
             }
+            sprintf(str, ":%d", request->ID);
+            strcat(new_line, str);
 
-            // Aggiungi l'ID del nuovo client
-            char new_client_id[BUFFER_SIZE];
-            sprintf(new_client_id, ":%d", request->ID);
-            strcat(new_line, new_client_id);
-
-            // Sostituisci la riga nel file con la riga aggiornata
-            fseek(fp, -strlen(line), SEEK_CUR);
-            fputs(new_line, fp);
-
-            strcpy(buffer, "Resource booked");
-            break;
+            fprintf(fp_tmp, "%s\n", new_line); //aggiungi il nuovo record al file temporaneo
+            strcpy(buffer, "Reservation successful"); //scrivi il messaggio di risposta nel buffer
         }
+        else
+            fprintf(fp_tmp, "%s", old_line);
     }
-
     fclose(fp);
+    fclose(fp_tmp);
+
+    remove("Database.txt");
+    rename("Database_tmp.txt", "Database.txt");
+
     return buffer;
 }
 

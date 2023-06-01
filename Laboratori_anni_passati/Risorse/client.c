@@ -22,6 +22,7 @@
 #define OPERATION_2   "2) Chiedere di prenotare una data risorsa (il server verifica se è ancora disponibile);\n"
 #define OPERATION_3   "3) Chiedere l’elenco delle risorse già prenotate;\n"
 #define OPERATION_4   "4) Liberare una risorsa prenotata in precedenza(il server verifica che era già riservata);\n"
+#define EXIT "5) EXIT"
 
 void handle_error(char* msg)
 {
@@ -62,16 +63,16 @@ int main(int argc, char* argv[])
     if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         handle_error("Error socket\n");
 
-    printf("Operazioni consentite:\n\n%s%s%s%s\n", OPERATION_1, OPERATION_2, OPERATION_3, OPERATION_4);
+    printf("Operazioni consentite:\n\n%s%s%s%s%s\n\n", OPERATION_1, OPERATION_2, OPERATION_3, OPERATION_4, EXIT);
     while(true)
     {
         printf("Enter a request: ");
         fgets(buffer, BUFFER_SIZE, stdin);
         buffer[strcspn(buffer, "\n")] = 0;  
 
-        if(strcasecmp(buffer, "exit") == 0) 
+        if(strcasecmp(buffer, "EXIT") == 0) 
         {
-            printf("Goodbye\n");
+            printf("\nGoodbye!\n");
             break;
         }
         else if(strcmp(buffer, "1") == 0 || strcmp(buffer, "2") == 0 || 
