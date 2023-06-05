@@ -8,6 +8,8 @@
 
 #define BUFFER_SIZE 1024
 #define NAME_SIZE 20
+#define IPV4_SIZE 13
+#define PORT 8000
 
 void handle_error(char* msg)
 {
@@ -36,9 +38,11 @@ void printRequest(Request* request)
     printf("Resource: %s\n\n", request->resource);
 }
 
+// <nome_risorsa>:<quantità_residua>:<client1>:...:<client2>
+
 char* operation1(Request* request)
 {
-    //  1)Chiedere l’elenco delle risorse disponibili (quindi con quantità > 0)
+    //  1)Chiedere l’elenco delle risorse disponibili (quindi con quantità > 0);
 
     FILE* fp;
     if(!(fp = fopen("Database.txt", "r")))
@@ -63,19 +67,6 @@ char* operation1(Request* request)
     return buffer;
 }
 
-/*
-Implementa la parte di codice richiesta sapendo il formato del file : 
-
-RAM:5
-CPU:4:3
-HARD-DISK:1
-GPU:0:2:3:4
-DRAM:2:3
-
-ovvero <nome_risorsa>:<quantità_residua>:<client1>:...:<client2>, dove risorsa rappresenta la 
-quantità ancora disponibile e i client dono degli ID univoci che rappresentano i client che hanno effettivamente bloccato la risorsa
-
-*/
 char* operation2(Request* request)
 {
     // 2)Chiedere di prenotare una data risorsa (il server verifica se è ancora disponibile);
@@ -124,8 +115,8 @@ char* operation2(Request* request)
             sprintf(str, ":%d", request->ID);
             strcat(new_line, str);
 
-            fprintf(fp_tmp, "%s\n", new_line); //aggiungi il nuovo record al file temporaneo
-            strcpy(buffer, "Reservation successful"); //scrivi il messaggio di risposta nel buffer
+            fprintf(fp_tmp, "%s\n", new_line); 
+            sprintf(buffer, "Client %d reserved %s\n", request->ID, request->resource); 
         }
         else
             fprintf(fp_tmp, "%s", old_line);
@@ -149,7 +140,7 @@ char* operation3(Request* request)
 
     Resource resource;
     char* buffer = malloc(BUFFER_SIZE);
-    strcpy(buffer, "Elenco: ");
+    strcpy(buffer, "\nElenco --> ");
     char line[BUFFER_SIZE];
 
     while(fgets(line, BUFFER_SIZE, fp))
@@ -179,7 +170,8 @@ char* operation3(Request* request)
 
 char* operation4(Request* request)
 {
-    // RAM:3:4:2
+    //  4)Liberare una risorsa prenotata in precedenza(il server verifica che era già riservata);
+
     FILE* fp;
     if(!(fp = fopen("Database.txt", "r+")))
         handle_error("Error fopen\n");
@@ -191,8 +183,6 @@ char* operation4(Request* request)
     Resource resource;
     char* buffer = malloc(BUFFER_SIZE);
     char line[BUFFER_SIZE];
-
-    //  4)Liberare una risorsa prenotata in precedenza(il server verifica che era già riservata).
 
     while(fgets(line, BUFFER_SIZE, fp))
     {
@@ -227,7 +217,7 @@ char* operation4(Request* request)
                         }
                     }
                     fprintf(fp_tmp, "%s\n", new_line); 
-                    strcpy(buffer, "Realese successful"); 
+                    sprintf(buffer, "Client %d released %s\n", request->ID, request->resource); 
                 }
             }
             if(!match)
@@ -245,20 +235,66 @@ char* operation4(Request* request)
     return buffer;
 }
 
-char* handle_operation(Request* request)
+void notify(char* outcome, FILE* fp)
 {
+    rewind(fp);
+
+    int remote_sockfd;
+    struct sockaddr_in remote_addr;
+    socklen_t len = sizeof(struct sockaddr_in);
+
+    memset(&remote_addr, 0, len);
+    remote_addr.sin_family = AF_INET;
+    remote_addr.sin_port = htons(PORT);
+
+    if((remote_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        handle_error("Error socket\n");
+
+    char ipv4[IPV4_SIZE];
+    while (fscanf(fp, "%s", ipv4) == 1)
+    {
+        remote_addr.sin_addr.s_addr = inet_addr(ipv4);
+        if((sendto(remote_sockfd, outcome, BUFFER_SIZE, 0, (struct sockaddr*)&remote_addr, len)) < 0)
+            handle_error("Error sendto\n");
+    }
+}
+
+char* handle_operation(Request* request, char* ipv4)
+{
+    char* outcome = malloc(BUFFER_SIZE);
+
+    FILE* fp;
+    if(!(fp = fopen("Address.txt", "r+")))  //tiene traccia degli IP dei client
+        handle_error("Error fopen\n");
+    fprintf(fp, "%s\n", ipv4);
+
     if(strcmp(request->operation, "1") == 0)
-        return operation1(request);
+    {
+        strcpy(outcome, operation1(request));
+        fclose(fp);
+        return outcome;
+    }
 
     if(strcmp(request->operation, "2") == 0)
-        return operation2(request);
-
+    {
+        strcpy(outcome, operation2(request));
+        notify(outcome, fp);
+        fclose(fp);
+        return outcome;
+    }
     if(strcmp(request->operation, "3") == 0)
-        return operation3(request);
-
+    {
+        strcpy(outcome, operation3(request));
+        fclose(fp);
+        return outcome;
+    }
     if(strcmp(request->operation, "4") == 0)
-        return operation4(request);
-}
+    {
+        strcpy(outcome, operation4(request));
+        notify(outcome, fp);
+        fclose(fp);
+        return outcome;
+    }}
 
 int main(int argc, char* argv[])
 {
@@ -289,7 +325,10 @@ int main(int argc, char* argv[])
         if((n = recvfrom(sockfd, &request, sizeof(Request), 0, (struct sockaddr*) &client_addr, &len)) < 0)
             handle_error("Errore recvfrom\n"); 
 
-        strcpy(buffer, handle_operation(&request)); //Elaborazione
+        char ipv4[IPV4_SIZE];
+        strcpy(ipv4, inet_ntoa(client_addr.sin_addr));
+
+        strcpy(buffer, handle_operation(&request, ipv4)); //Elaborazione
         printf("Outcome: %s\n", buffer);
 
         if((sendto(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &client_addr, len)) < 0)
