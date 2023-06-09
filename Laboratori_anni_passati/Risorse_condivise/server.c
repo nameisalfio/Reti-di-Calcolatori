@@ -6,9 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 1024
 #define NAME_SIZE 20
-#define IPV4_SIZE 13
 #define PORT 8000
 
 void handle_error(char* msg)
@@ -19,7 +17,7 @@ void handle_error(char* msg)
 
 typedef struct
 {
-    char operation[BUFFER_SIZE];
+    char operation[BUFSIZ];
     int ID;
     char resource[NAME_SIZE];
 } Request;
@@ -49,16 +47,16 @@ char* operation1(Request* request)
         handle_error("Error fopen\n");
 
     Resource resource;
-    char* buffer = malloc(BUFFER_SIZE);
-    char line[BUFFER_SIZE];
+    char* buffer = malloc(BUFSIZ);
+    char line[BUFSIZ];
 
-    while(fgets(line, BUFFER_SIZE, fp) )
+    while(fgets(line, BUFSIZ, fp) )
     {
         strcpy(resource.name, strtok(line, ":"));
         resource.amount = atoi(strtok(NULL, ":"));
         if(resource.amount > 0)
         {
-            char str[BUFFER_SIZE];
+            char str[BUFSIZ];
             sprintf(str, "%s(%d) ", resource.name, resource.amount);
             strcat(buffer, str);
         }
@@ -80,10 +78,10 @@ char* operation2(Request* request)
         handle_error("Error fopen\n");
 
     Resource resource;
-    char* buffer = malloc(BUFFER_SIZE);
-    char line[BUFFER_SIZE];
+    char* buffer = malloc(BUFSIZ);
+    char line[BUFSIZ];
     long line_start;
-    while(fgets(line, BUFFER_SIZE, fp))
+    while(fgets(line, BUFSIZ, fp))
     {
         char* old_line = strdup(line);
         strcpy(resource.name, strtok(line, ":"));
@@ -103,8 +101,8 @@ char* operation2(Request* request)
                 break;
             }
 
-            char new_line[BUFFER_SIZE];
-            char str[BUFFER_SIZE];
+            char new_line[BUFSIZ];
+            char str[BUFSIZ];
             resource.amount--;
             sprintf(new_line, "%s:%d", resource.name, resource.amount);
             for(int i=0; i<n; i++)
@@ -139,11 +137,11 @@ char* operation3(Request* request)
         handle_error("Error fopen\n");
 
     Resource resource;
-    char* buffer = malloc(BUFFER_SIZE);
+    char* buffer = malloc(BUFSIZ);
     strcpy(buffer, "\nElenco --> ");
-    char line[BUFFER_SIZE];
+    char line[BUFSIZ];
 
-    while(fgets(line, BUFFER_SIZE, fp))
+    while(fgets(line, BUFSIZ, fp))
     {
         strcpy(resource.name, strtok(line, ":"));
         resource.amount = atoi(strtok(NULL, ":"));
@@ -181,10 +179,10 @@ char* operation4(Request* request)
         handle_error("Error fopen\n");
 
     Resource resource;
-    char* buffer = malloc(BUFFER_SIZE);
-    char line[BUFFER_SIZE];
+    char* buffer = malloc(BUFSIZ);
+    char line[BUFSIZ];
 
-    while(fgets(line, BUFFER_SIZE, fp))
+    while(fgets(line, BUFSIZ, fp))
     {
         char* old_line = strdup(line);
         strcpy(resource.name, strtok(line, ":"));
@@ -204,8 +202,8 @@ char* operation4(Request* request)
                 if(resource.ID_list[i] == request->ID)  //scorro la lista dei client che detengono la risorsa
                 {
                     match = true;
-                    char new_line[BUFFER_SIZE];
-                    char str[BUFFER_SIZE];
+                    char new_line[BUFSIZ];
+                    char str[BUFSIZ];
                     resource.amount++;
                     sprintf(new_line, "%s:%d", resource.name, resource.amount);
                     for(int i=0; i<n; i++)
@@ -250,23 +248,32 @@ void notify(char* outcome, FILE* fp)
     if((remote_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         handle_error("Error socket\n");
 
-    char ipv4[IPV4_SIZE];
-    while (fscanf(fp, "%s", ipv4) == 1)
+    char IPv4[INET_ADDRSTRLEN];
+    while (fscanf(fp, "%s", IPv4) == 1)
     {
-        remote_addr.sin_addr.s_addr = inet_addr(ipv4);
-        if((sendto(remote_sockfd, outcome, BUFFER_SIZE, 0, (struct sockaddr*)&remote_addr, len)) < 0)
+        inet_pton(AF_INET, IPv4, &remote_addr.sin_addr);
+        if((sendto(remote_sockfd, outcome, BUFSIZ, 0, (struct sockaddr*)&remote_addr, len)) < 0)
             handle_error("Error sendto\n");
     }
 }
 
-char* handle_operation(Request* request, char* ipv4)
+char* handle_operation(Request* request, char* IPv4)
 {
-    char* outcome = malloc(BUFFER_SIZE);
+    char* outcome = malloc(BUFSIZ);
+    char address[INET_ADDRSTRLEN];
+    bool found = false;
 
     FILE* fp;
-    if(!(fp = fopen("Address.txt", "r+")))  //tiene traccia degli IP dei client
+    if(!(fp = fopen("Address.txt", "a+")))  //tiene traccia degli IP dei client
         handle_error("Error fopen\n");
-    fprintf(fp, "%s\n", ipv4);
+
+    while(fscanf(fp, "%s", address) == 1)
+    {
+        if(strcmp(IPv4, address) == 0)
+            found = true;
+    }
+    if(!found)
+        fprintf(fp, "%s\n", IPv4);
 
     if(strcmp(request->operation, "1") == 0)
     {
@@ -301,7 +308,7 @@ int main(int argc, char* argv[])
     int sockfd, n;
     struct sockaddr_in server_addr, client_addr;
     socklen_t len = sizeof(struct sockaddr_in);
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFSIZ];
 
     if(argc != 2)
         handle_error("Error argc\n");
@@ -325,13 +332,13 @@ int main(int argc, char* argv[])
         if((n = recvfrom(sockfd, &request, sizeof(Request), 0, (struct sockaddr*) &client_addr, &len)) < 0)
             handle_error("Errore recvfrom\n"); 
 
-        char ipv4[IPV4_SIZE];
-        strcpy(ipv4, inet_ntoa(client_addr.sin_addr));
+        char IPv4[INET_ADDRSTRLEN];
+        strcpy(IPv4, inet_ntoa(client_addr.sin_addr));
 
-        strcpy(buffer, handle_operation(&request, ipv4)); //Elaborazione
+        strcpy(buffer, handle_operation(&request, IPv4)); //Elaborazione
         printf("Outcome: %s\n", buffer);
 
-        if((sendto(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &client_addr, len)) < 0)
+        if((sendto(sockfd, buffer, BUFSIZ, 0, (struct sockaddr*) &client_addr, len)) < 0)
             handle_error("Errore sendto\n");
     }
     close(sockfd);

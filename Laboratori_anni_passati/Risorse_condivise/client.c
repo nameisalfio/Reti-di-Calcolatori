@@ -15,7 +15,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 1024
 #define NAME_SIZE 20
 #define PORT 8000
 
@@ -33,7 +32,7 @@ void handle_error(char* msg)
 
 typedef struct
 {
-    char operation[BUFFER_SIZE];
+    char operation[BUFSIZ];
     int ID;
     char resource[NAME_SIZE];
 } Request;
@@ -51,7 +50,7 @@ int main(int argc, char* argv[])
     int sockfd, remote_sockfd, n;
     struct sockaddr_in server_addr, remote_addr;
     socklen_t len = sizeof(struct sockaddr_in);
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFSIZ];
 
     if(argc != 3)
         handle_error("Error argc\n");
@@ -69,16 +68,16 @@ int main(int argc, char* argv[])
     if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         handle_error("Error socket\n");
 
-    if((remote_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if((remote_sockfd = socket(AF_INET, SOCK_DGRAM , 0)) < 0)
         handle_error("Error socket\n");
 
     printf("Operazioni consentite:\n\n%s%s%s%s%s\n", OPERATION_1, OPERATION_2, OPERATION_3, OPERATION_4, EXIT);
-    if(!fork())
+    if(fork())
     {
         while(true)
         {
             printf("Enter a request: ");
-            fgets(buffer, BUFFER_SIZE, stdin);
+            fgets(buffer, BUFSIZ, stdin);
             buffer[strcspn(buffer, "\n")] = 0;  
 
             if(strcasecmp(buffer, "EXIT") == 0) 
@@ -107,23 +106,22 @@ int main(int argc, char* argv[])
                 if((sendto(sockfd, &request, sizeof(Request), 0, (struct sockaddr*) &server_addr, len)) < 0)
                     handle_error("Error sendto\n");
 
-                if((n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &server_addr, &len)) < 0)
+                if((n = recvfrom(sockfd, buffer, BUFSIZ, 0, (struct sockaddr*) &server_addr, &len)) < 0)
                     handle_error("Error recvfrom\n");
                 buffer[n] = 0;
                 printf("\nOutcome: %s\n\n", buffer);
             }
             else
                 printf("Invalid request\n\n");        
-
         }
         return 0;
     }
     else
     {
-        if((bind(remote_sockfd, (struct sockaddr *)&remote_addr, len)) < 0)
+        if((bind(remote_sockfd, (struct sockaddr *) &remote_addr, len)) < 0)
             handle_error("Error bind\n");
 
-        if((n = recvfrom(remote_sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &remote_addr, &len)) < 0)
+        if((n = recvfrom(remote_sockfd, buffer, BUFSIZ, 0, (struct sockaddr*) &remote_addr, &len)) < 0)
             handle_error("Error recvfrom\n");
         buffer[n] = 0;
         printf("\n\n[+]Outcome : %s\n", buffer);
