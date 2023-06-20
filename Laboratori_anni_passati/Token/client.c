@@ -6,7 +6,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 1024
 #define USERNAME_SIZE 20
 #define PASSWORD_SIZE 20
 #define PORT 8000
@@ -19,10 +18,10 @@ void handle_error(char* msg)
 
 typedef struct 
 {
-    char request[BUFFER_SIZE];
+    char request[BUFSIZ];
     char username[USERNAME_SIZE];
     char password[PASSWORD_SIZE];
-    char msg[BUFFER_SIZE];
+    char msg[BUFSIZ];
 }Message;
 
 void printMessage(Message* msg)
@@ -39,7 +38,7 @@ int main(int argc, char* argv[])
     int sockfd, remote_sockfd, n;
     struct sockaddr_in6 server_addr, remote_addr;
     socklen_t len = sizeof(struct sockaddr_in6);
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFSIZ];
 
     if(argc != 3)
         handle_error("Error argc\n");
@@ -65,7 +64,7 @@ int main(int argc, char* argv[])
         Message msg;
 
         printf("Enter <START> : ");
-        fgets(buffer, BUFFER_SIZE, stdin);
+        fgets(buffer, BUFSIZ, stdin);
         buffer[strcspn(buffer, "\n")] = '\0';
 
         if(strcasecmp(buffer, "START") == 0)
@@ -73,24 +72,24 @@ int main(int argc, char* argv[])
             strcpy(msg.request, buffer);  //Request
 
             printf("\n-> Enter username: ");   //Username
-            fgets(buffer, BUFFER_SIZE, stdin);
+            fgets(buffer, BUFSIZ, stdin);
             buffer[strcspn(buffer, "\n")] = 0;
             strcpy(msg.username, buffer);   
 
             printf("-> Enter password: ");   //Password
-            fgets(buffer, BUFFER_SIZE, stdin);
+            fgets(buffer, BUFSIZ, stdin);
             buffer[strcspn(buffer, "\n")] = 0;
             strcpy(msg.password, buffer);   
 
             printf("-> Enter message: ");   //Message
-            fgets(buffer, BUFFER_SIZE, stdin);
+            fgets(buffer, BUFSIZ, stdin);
             buffer[strcspn(buffer, "\n")] = 0;
             strcpy(msg.msg, buffer);   
 
             if((sendto(sockfd, &msg, sizeof(msg), 0, (struct sockaddr*) &server_addr, len)) < 0)
                 handle_error("Error sendto\n");
             
-            if((n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &server_addr, &len)) < 0)
+            if((n = recvfrom(sockfd, buffer, BUFSIZ, 0, (struct sockaddr*) &server_addr, &len)) < 0)
                 handle_error("Error recvfrom\n");
             buffer[n] = 0;
 
@@ -99,7 +98,7 @@ int main(int argc, char* argv[])
             printf("\nToken assigned from server: %s\n", buffer);
             
             printf("\nDo you want to send you message? <YES> <NO> : ");
-            fgets(buffer, BUFFER_SIZE, stdin);
+            fgets(buffer, BUFSIZ, stdin);
             buffer[strcspn(buffer, "\n")] = '\0';
 
             if(strcasecmp(buffer, "YES") == 0)
@@ -125,7 +124,7 @@ int main(int argc, char* argv[])
         if((bind(remote_sockfd, (struct sockaddr *)&remote_addr, len)) < 0)
             handle_error("Error bind\n");
 
-        if((n = recvfrom(remote_sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &remote_addr, &len)) < 0)
+        if((n = recvfrom(remote_sockfd, buffer, BUFSIZ, 0, (struct sockaddr*) &remote_addr, &len)) < 0)
             handle_error("Error recvfrom\n");
         buffer[n] = 0;
         printf("\n\n[+]Message received : %s\n", buffer);

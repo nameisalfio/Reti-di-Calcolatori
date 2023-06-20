@@ -7,17 +7,16 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 1024
 #define USERNAME_SIZE 20
 #define PASSWORD_SIZE 20
 #define PORT 8000
 
 typedef struct 
 {
-    char request[BUFFER_SIZE];
+    char request[BUFSIZ];
     char username[USERNAME_SIZE];
     char password[PASSWORD_SIZE];
-    char msg[BUFFER_SIZE];
+    char msg[BUFSIZ];
 }Message;
 
 void printMessage(Message* msg)
@@ -38,8 +37,8 @@ void handle_error(char* msg)
 bool LOG(Message* msg, FILE* fp)
 {
     rewind(fp);
-    char line[BUFFER_SIZE];
-    while(fgets(line, BUFFER_SIZE, fp))
+    char line[BUFSIZ];
+    while(fgets(line, BUFSIZ, fp))
     {
         char* l_username = strtok(line, " ");
         if (strcmp(l_username, msg->username) == 0)
@@ -52,8 +51,6 @@ bool REG(Message* msg, FILE* fp, int* token, char* ipv6)
 {
     if (LOG(msg, fp))
         return false;
-
-    printMessage(&msg);
 
     fseek(fp, 0, SEEK_END);
     srand(time(NULL));  //seed
@@ -89,7 +86,7 @@ void SEND(Message* msg, FILE* fp)
         if (strcmp(msg->username, usr) != 0)
         {
             inet_pton(AF_INET6, ipv6, &remote_addr.sin6_addr);
-            if (sendto(remote_sockfd, msg->msg, BUFFER_SIZE, 0, (struct sockaddr*)&remote_addr, len) < 0)
+            if (sendto(remote_sockfd, msg->msg, BUFSIZ, 0, (struct sockaddr*)&remote_addr, len) < 0)
                 handle_error("Error sendto\n");
         }
     }
@@ -102,7 +99,7 @@ char* handle_request(Message* msg, FILE* fp, char* ipv6)
         int token=0;
         if(REG(msg, fp, &token, ipv6))    //prima fase di registrazione
         {
-            char* str = malloc(BUFFER_SIZE);
+            char* str = malloc(BUFSIZ);
             sprintf(str, "%d", token);
             return str;
         }
@@ -120,7 +117,7 @@ int main(int argc, char* argv[])
     int sockfd, n, port_client;
     struct sockaddr_in6 server_addr, client_addr;
     socklen_t len = sizeof(struct sockaddr_in6);
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFSIZ];
 
     if(argc != 2)
         handle_error("Error argc\n");
@@ -154,7 +151,7 @@ int main(int argc, char* argv[])
         strcpy(buffer, handle_request(&msg, fp, ipv6));   //Elaborazione
         printf("Outcome operation: %s\n\n", buffer);
 
-        if((sendto(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr* )&client_addr, len)) < 0)
+        if((sendto(sockfd, buffer, BUFSIZ, 0, (struct sockaddr* )&client_addr, len)) < 0)
             handle_error("Error sendto\n");
     }
     fclose(fp);
