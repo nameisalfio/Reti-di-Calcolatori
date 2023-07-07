@@ -148,9 +148,7 @@ char** find_closest_languages(VMClient* client, int** distanceMatrix)
     //Scrivo nell'array degli indici tutti gli indici a meno di id
     int currentIndex = 0;
     for (int i = 0; i < MAX_CLIENT; i++) 
-    {
         if (i != id) index[currentIndex++] = i;
-    }
 
     //Bubble sort 
     for (int i = 0; i < currentIndex - 1; i++) 
@@ -173,7 +171,7 @@ char** find_closest_languages(VMClient* client, int** distanceMatrix)
     
     char** closest = malloc(sizeof(char*) * n);
     for(int i = 0; i < n; i++)
-        readFile(index[i], &closest[i]);
+        readFile(index[i], &closest[i]);    //legge dal file ed inizializza le stringhe di IP
     
     return closest;
 }
